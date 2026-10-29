@@ -131,7 +131,7 @@ export class UserStore {
     }
     this.byAddress = new Map(this.users.filter(u => u.address !== '').map(u => [u.address, u]));
     this.byUserId = new Map(
-      this.users.filter(u => u.userId !== undefined).map(u => [u.userId!, u])
+      this.users.filter(u => u.userId !== undefined && u.userId !== '').map(u => [u.userId!, u])
     );
     this.byUsername = new Map(
       this.users.filter(u => u.username !== null).map(u => [u.username!.toLowerCase(), u])
@@ -213,7 +213,7 @@ export class UserStore {
     return (
       this.verifiedUsers.has(id) ||
       this.verifiedUsers.has(user.address) ||
-      (user.userId !== undefined && this.verifiedUsers.has(user.userId))
+      (user.userId !== undefined && user.userId !== '' && this.verifiedUsers.has(user.userId))
     );
   }
 
