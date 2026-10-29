@@ -121,7 +121,8 @@ export class UserStore {
   private verifiedUsers: Set<string>;
 
   constructor(seed?: User[], verifiedIds?: string[] | Set<string>) {
-    this.users = seed ?? users;
+    // Keep the indexed snapshot independent of caller-owned arrays and rows.
+    this.users = structuredClone(seed ?? users);
     this.byAddress = new Map(this.users.map(u => [u.address, u]));
     this.byUserId = new Map(
       this.users.filter(u => u.userId !== undefined).map(u => [u.userId!, u])
