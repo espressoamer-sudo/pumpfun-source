@@ -7,6 +7,14 @@ import hashlib
 from pathlib import Path
 
 
+def file_digest(path):
+    digest = hashlib.sha256()
+    with path.open('rb') as source:
+        for block in iter(lambda: source.read(128 * 1024), b''):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def source_manifest(crate, workspace, repository, extra_inputs=(), cwd=None):
     crate, workspace, repository = map(lambda p: Path(p).resolve(), (crate, workspace, repository))
     cwd = Path(cwd or repository).resolve()
@@ -46,4 +54,4 @@ def source_manifest(crate, workspace, repository, extra_inputs=(), cwd=None):
             files.add(p)
         else:
             files.update(f for f in p.rglob('*') if f.is_file() and not {'target', '.git'}.intersection(f.relative_to(p).parts))
-    return {p.relative_to(repository).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(files)}
+    return {p.relative_to(repository).as_posix(): file_digest(p) for p in sorted(files)}
