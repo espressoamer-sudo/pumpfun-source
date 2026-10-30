@@ -239,6 +239,9 @@ export class CompetitionStore {
         throw new TypeError('Ambiguous competition ID/slug keyspace');
       }
     }
+    for (const comp of this.competitions) {
+      if (comp.kind === 'person' && (comp.minMembers !== 1 || comp.maxMembers !== 1)) throw new TypeError('Person competition member bounds must both be one');
+    }
     // Ranking sorts entries by pnlUsd and the served JSON serializes every
     // entry measure, so a nonfinite measure corrupts both: the comparator
     // returns NaN (a NaN-pnl entry can take rank 1 over a real profit) and
