@@ -239,6 +239,13 @@ export class CompetitionStore {
         throw new TypeError('Ambiguous competition ID/slug keyspace');
       }
     }
+    for (const comp of this.competitions) {
+      let previousEnd = -Infinity;
+      for (const tier of comp.prizes) {
+        if (tier.rankFrom <= previousEnd) throw new TypeError('Competition prize tiers must be ascending and non-overlapping');
+        previousEnd = tier.rankTo;
+      }
+    }
     // Ranking sorts entries by pnlUsd and the served JSON serializes every
     // entry measure, so a nonfinite measure corrupts both: the comparator
     // returns NaN (a NaN-pnl entry can take rank 1 over a real profit) and
