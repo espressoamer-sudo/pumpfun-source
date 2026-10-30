@@ -85,6 +85,8 @@ function relevance(user: User, term: string): number {
 export class FollowingStore {
   private readonly users: UserStore;
   private readonly edges: FollowEdge[];
+  private readonly followerCounts = new Map<string, number>();
+  private readonly followingCounts = new Map<string, number>();
 
   constructor(userStore: UserStore = defaultStore, seed: FollowEdge[] = edges) {
     this.users = userStore;
@@ -92,16 +94,20 @@ export class FollowingStore {
     if (this.edges.some(edge => !Number.isSafeInteger(edge.timestamp) || edge.timestamp < 0)) throw new TypeError('Invalid follow timestamp');
     const pairs = this.edges.map((edge) => JSON.stringify([edge.follower_id, edge.following_id]));
     if (new Set(pairs).size !== pairs.length) throw new TypeError('Duplicate follow relation');
+    for (const edge of this.edges) {
+      this.followerCounts.set(edge.following_id, (this.followerCounts.get(edge.following_id) ?? 0) + 1);
+      this.followingCounts.set(edge.follower_id, (this.followingCounts.get(edge.follower_id) ?? 0) + 1);
+    }
   }
 
   /** Number of edges pointing at `userId`. */
   countFollowers(userId: string): number {
-    return this.edges.filter((e) => e.following_id === userId).length;
+    return this.followerCounts.get(userId) ?? 0;
   }
 
   /** Number of edges leaving `userId`. */
   countFollowing(userId: string): number {
-    return this.edges.filter((e) => e.follower_id === userId).length;
+    return this.followingCounts.get(userId) ?? 0;
   }
 
   /**
