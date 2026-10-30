@@ -240,7 +240,7 @@ export class UserStore {
 
   /** Check whether a user is verified (by address or userId). Returns false for unknown ids. */
   isVerified(id: string): boolean {
-    const user = this.getById(id);
+    const user = this.byAddress.get(id) ?? this.byUserId.get(id);
     if (!user) return false;
     return (
       this.verifiedUsers.has(id) ||
