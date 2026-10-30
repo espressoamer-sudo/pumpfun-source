@@ -9,7 +9,7 @@
 Diff tokens use the scorer's normalization (internal call imm + section-pointer lddw masked).
 '-' = original only, '+' = candidate only. Default candidate = base/current/unstripped.so.
 """
-import argparse, difflib, re, subprocess, sys
+import argparse, difflib, re, subprocess, sys, tempfile
 from pathlib import Path
 from collections import Counter
 from llvm_tools import objdump
@@ -63,7 +63,10 @@ def objdump_text(path, start, end):
 class Cand:
     def __init__(self, path):
         self.path = Path(path); self.blob = self.path.read_bytes(); self.secs = sections(self.blob)
-        self.funcs = candidate_functions(self.path)
+        with tempfile.TemporaryDirectory(prefix='pump-candidate-') as temporary:
+            snapshot = Path(temporary) / 'candidate.so'
+            snapshot.write_bytes(self.blob)
+            self.funcs = candidate_functions(snapshot)
         self._opgrams = {}
         self._tokens = {}
 
