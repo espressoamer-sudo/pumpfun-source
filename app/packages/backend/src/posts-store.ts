@@ -285,10 +285,15 @@ export class PostStore {
    * contract's `reposted` embed is "always present on a served repost".
    */
   private isServed(raw: RawPost): boolean {
-    if (raw.deleted || raw.hidden) return false;
-    if (raw.kind !== 'repost') return true;
-    const target = raw.repostedPostId ? this.byPostId.get(raw.repostedPostId) : undefined;
-    return target !== undefined && !target.deleted && !target.hidden;
+    const seen = new Set<string>();
+    let current: RawPost | undefined = raw;
+    while (current !== undefined) {
+      if (current.deleted || current.hidden || seen.has(current.postId)) return false;
+      if (current.kind !== 'repost') return true;
+      seen.add(current.postId);
+      current = current.repostedPostId ? this.byPostId.get(current.repostedPostId) : undefined;
+    }
+    return false;
   }
 
   /**
