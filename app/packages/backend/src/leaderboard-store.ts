@@ -122,6 +122,15 @@ export class LeaderboardStore {
           if (!Number.isFinite(entry[key])) throw new TypeError(`Leaderboard ${key} must be finite`);
         }
       }
+      for (const entry of this.boards[period]) {
+        if (entry.userId !== null && typeof entry.userId !== 'string') throw new TypeError('Leaderboard userId must be nullable text');
+        for (const position of entry.positions) {
+          if (typeof position.mint !== 'string') throw new TypeError('Leaderboard position mint must be text');
+          for (const field of ['symbol', 'name', 'imageUri'] as const) {
+            if (position[field] !== null && typeof position[field] !== 'string') throw new TypeError(`Leaderboard position ${field} must be nullable text`);
+          }
+        }
+      }
       const wallets = this.boards[period].map((entry) => entry.walletAddress);
       if (new Set(wallets).size !== wallets.length) throw new TypeError('Duplicate leaderboard wallet');
     }
