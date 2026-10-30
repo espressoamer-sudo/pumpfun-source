@@ -184,6 +184,8 @@ export class PostStore {
   private posts: RawPost[];
   private byPostId: Map<string, RawPost>;
   private userStore: UserStore;
+  private readonly repliesByParent = new Map<string, RawPost[]>();
+  private readonly quotesByTarget = new Map<string, RawPost[]>();
 
   constructor(seed?: RawPost[], userStore?: UserStore) {
     // The store documents deterministic read-only data: snapshot the seed so
@@ -192,6 +194,18 @@ export class PostStore {
     if (new Set(this.posts.map(p => p.postId)).size !== this.posts.length) throw new TypeError('Duplicate post identity');
     this.byPostId = new Map(this.posts.map(p => [p.postId, p]));
     this.userStore = userStore ?? defaultStore;
+    for (const post of this.posts) {
+      if (post.parentPostId !== null) {
+        const replies = this.repliesByParent.get(post.parentPostId) ?? [];
+        replies.push(post);
+        this.repliesByParent.set(post.parentPostId, replies);
+      }
+      if (post.quotedPostId !== null) {
+        const quotes = this.quotesByTarget.get(post.quotedPostId) ?? [];
+        quotes.push(post);
+        this.quotesByTarget.set(post.quotedPostId, quotes);
+      }
+    }
   }
 
   /** Hydrate a raw post to conform to Shared_47a8d5353d95. depth > 0 omits nested embeds. */
@@ -330,7 +344,7 @@ export class PostStore {
     const post = this.byPostId.get(postId);
     if (!post || !this.isServed(post)) return undefined;
 
-    let items = this.posts.filter(p => p.parentPostId === postId && !p.deleted && !p.hidden);
+    let items = (this.repliesByParent.get(postId) ?? []).filter(p => !p.deleted && !p.hidden);
     items.sort(comparePostsNewestFirst);
 
     if (opts.cursor !== undefined) {
@@ -366,7 +380,7 @@ export class PostStore {
     const post = this.byPostId.get(postId);
     if (!post || !this.isServed(post)) return undefined;
 
-    let items = this.posts.filter(p => p.quotedPostId === postId && p.kind === 'quote' && !p.deleted && !p.hidden);
+    let items = (this.quotesByTarget.get(postId) ?? []).filter(p => p.kind === 'quote' && !p.deleted && !p.hidden);
     items.sort(comparePostsNewestFirst);
 
     if (opts.cursor !== undefined) {
