@@ -142,6 +142,7 @@ function isWalletAddress(value: string): boolean {
 
 export class UserStore {
   private users: User[];
+  private readonly listOrders = new Map<string, User[]>();
   private byAddress: Map<string, User>;
   private byUserId: Map<string, User>;
   private byUsername: Map<string, User>;
@@ -177,17 +178,22 @@ export class UserStore {
 
   /** List users with optional sort, order, offset and limit. */
   list(opts: { sort?: string; order?: string; offset?: number; limit?: number }): User[] {
-    let result = [...this.users];
+    let result = this.users;
 
-    // Sort if a recognized key is provided; otherwise keep insertion order.
     if (opts.sort && SORT_KEYS.has(opts.sort)) {
       const key = opts.sort as SortKey;
-      const order: 'asc' | 'desc' = opts.order === 'desc' ? 'desc' : 'asc';
-      result.sort((a, b) => comparePrimitive(
-        a[key] as string | number | null,
-        b[key] as string | number | null,
-        order,
-      ));
+      const order = opts.order === 'desc' ? 'desc' : 'asc';
+      const cacheKey = `${key}:${order}`;
+      let ordered = this.listOrders.get(cacheKey);
+      if (!ordered) {
+        ordered = [...this.users].sort((a, b) => comparePrimitive(
+          a[key] as string | number | null,
+          b[key] as string | number | null,
+          order,
+        ));
+        this.listOrders.set(cacheKey, ordered);
+      }
+      result = ordered;
     }
 
     const offset = opts.offset ?? 0;
