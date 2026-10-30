@@ -108,6 +108,7 @@ export function isSort(value: string | undefined): value is SortKey {
 
 export class LeaderboardStore {
   private boards: RawSeed;
+  private readonly rankedBoards = new Map<string, RawLeaderboardEntry[]>();
   private userStore: UserStore;
 
   constructor(seed?: RawSeed, userStore?: UserStore) {
@@ -126,6 +127,14 @@ export class LeaderboardStore {
       if (new Set(wallets).size !== wallets.length) throw new TypeError('Duplicate leaderboard wallet');
     }
     this.userStore = userStore ?? defaultStore;
+    for (const period of PERIODS) {
+      for (const sort of SORTS) {
+        this.rankedBoards.set(`${period}:${sort}`, [...this.boards[period]].sort((a, b) => {
+          const delta = this.sortValue(b, sort) - this.sortValue(a, sort);
+          return delta !== 0 ? delta : a.walletAddress.localeCompare(b.walletAddress);
+        }));
+      }
+    }
   }
 
   private sortValue(entry: RawLeaderboardEntry, sort: SortKey): number {
@@ -217,11 +226,8 @@ export class LeaderboardStore {
     const positionsLimit = this.clampPositionsLimit(query.positionsLimit);
     const limit = this.clampLimit(query.limit);
 
-    const ranked = [...(this.boards[query.period] ?? [])].sort((a, b) => {
-      const delta = this.sortValue(b, sort) - this.sortValue(a, sort);
-      if (delta !== 0) return delta;
-      return a.walletAddress.localeCompare(b.walletAddress);
-    });
+    const measure = sort === 'realized' || sort === 'unrealized' ? sort : 'combined';
+    const ranked = this.rankedBoards.get(`${query.period}:${measure}`) ?? [];
 
     const entries = ranked
       .slice(0, limit)
