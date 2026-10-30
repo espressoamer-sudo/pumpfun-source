@@ -223,6 +223,7 @@ export class CompetitionStore {
   private byId: Map<string, RawCompetition>;
   private bySlug: Map<string, RawCompetition>;
   private userStore: UserStore;
+  private readonly rankCache = new WeakMap<RawCompetition, RankedEntry[]>();
 
   constructor(seed?: RawCompetition[], userStore?: UserStore) {
     // The store documents deterministic read-only data: snapshot the seed so
@@ -299,6 +300,16 @@ export class CompetitionStore {
    * Before the first build, when struck, or with an explicit absent person scoring wallet, rank is 0.
    */
   private rankEntries(comp: RawCompetition): RankedEntry[] {
+    // Only constructor-owned snapshots are immutable; public raw-view callers remain uncached.
+    const immutable = this.byId.get(comp.id) === comp;
+    const cached = immutable ? this.rankCache.get(comp) : undefined;
+    if (cached) return cached;
+    const ranked = this.computeRankEntries(comp);
+    if (immutable) this.rankCache.set(comp, ranked);
+    return ranked;
+  }
+
+  private computeRankEntries(comp: RawCompetition): RankedEntry[] {
     // builtAtMs is the maximum refresh time; 0 means no board has been built yet.
     if (!comp.entries.some(entry => entry.lastRefreshedAtMs > 0)) {
       return comp.entries.map(entry => ({ ...entry, rank: 0 }));
