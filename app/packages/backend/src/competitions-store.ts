@@ -239,6 +239,34 @@ export class CompetitionStore {
         throw new TypeError('Ambiguous competition ID/slug keyspace');
       }
     }
+    const nullableText = (value: unknown) => value === null || typeof value === 'string';
+    const wallet = (value: unknown) => value === undefined || nullableText(value);
+    for (const comp of this.competitions) {
+      for (const key of ['title', 'description', 'prizeCopy'] as const) {
+        if (typeof comp[key] !== 'string') throw new TypeError(`Competition ${key} must be text`);
+      }
+      if (!nullableText(comp.imageUrl)) throw new TypeError('Competition imageUrl must be nullable text');
+      for (const tier of comp.prizes) {
+        if (typeof tier.amount !== 'string') throw new TypeError('Competition prize amount must be display text');
+      }
+      for (const entry of comp.entries) {
+        if (typeof entry.participantId !== 'string' || !wallet(entry.walletAddress)) throw new TypeError('Competition participant identity must be text');
+        for (const position of [...(entry.positions ?? []), ...(entry.highlightTokens ?? [])]) {
+          if (typeof position.mint !== 'string') throw new TypeError('Competition token mint must be text');
+          for (const key of ['symbol', 'name', 'imageUri'] as const) {
+            if (!nullableText(position[key])) throw new TypeError(`Competition token ${key} must be nullable text`);
+          }
+        }
+        for (const member of entry.members ?? []) {
+          if (typeof member.userId !== 'string' || !wallet(member.walletAddress) || typeof member.fresh !== 'boolean') throw new TypeError('Competition member text/fresh facts are invalid');
+        }
+        for (const token of entry.highlightTokens ?? []) {
+          for (const member of token.members ?? []) {
+            if (typeof member.userId !== 'string' || !wallet(member.walletAddress)) throw new TypeError('Competition highlight member identity must be text');
+          }
+        }
+      }
+    }
     // Ranking sorts entries by pnlUsd and the served JSON serializes every
     // entry measure, so a nonfinite measure corrupts both: the comparator
     // returns NaN (a NaN-pnl entry can take rank 1 over a real profit) and
