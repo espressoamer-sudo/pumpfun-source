@@ -190,6 +190,19 @@ export class PostStore {
     // caller-owned rows (and the shared default seed) cannot corrupt later reads.
     this.posts = structuredClone(seed ?? (seedData as RawPost[]));
     if (new Set(this.posts.map(p => p.postId)).size !== this.posts.length) throw new TypeError('Duplicate post identity');
+    for (const post of this.posts) {
+      for (const field of ['content', 'mediaUrl', 'parentPostId', 'rootPostId', 'quotedPostId', 'repostedPostId'] as const) {
+        if (post[field] !== null && typeof post[field] !== 'string') throw new TypeError(`Post ${field} must be nullable text`);
+      }
+      if (!Array.isArray(post.mentions)) throw new TypeError('Post mentions must be an array');
+      for (const mention of post.mentions) {
+        if (!mention || typeof mention !== 'object' || Array.isArray(mention) ||
+            typeof mention.userId !== 'string' || typeof mention.username !== 'string' ||
+            (mention.walletAddress !== null && typeof mention.walletAddress !== 'string')) {
+          throw new TypeError('Post mentions must contain complete text records');
+        }
+      }
+    }
     this.byPostId = new Map(this.posts.map(p => [p.postId, p]));
     this.userStore = userStore ?? defaultStore;
   }
