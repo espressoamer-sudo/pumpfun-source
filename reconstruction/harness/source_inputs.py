@@ -14,8 +14,12 @@ def snapshot(root):
     for directory, dirs, names in os.walk(root, followlinks=False):
         dirs[:] = sorted(name for name in dirs if name != '.git')
         for name in dirs:
-            if (Path(directory) / name).is_symlink():
-                raise ValueError('source directory symlinks are not supported')
+            path = Path(directory) / name
+            metadata = path.lstat()
+            if (stat.S_ISLNK(metadata.st_mode) or
+                    getattr(metadata, 'st_file_attributes', 0) &
+                    getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0)):
+                raise ValueError('source directory symlinks and reparse points are not supported')
         if Path(directory) == root:
             dirs[:] = [name for name in dirs if name != 'target']
         for name in sorted(names):
