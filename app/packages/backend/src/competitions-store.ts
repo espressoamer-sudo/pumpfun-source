@@ -239,6 +239,15 @@ export class CompetitionStore {
         throw new TypeError('Ambiguous competition ID/slug keyspace');
       }
     }
+    for (const comp of this.competitions) {
+      for (const field of ['startsAt', 'endsAt'] as const) {
+        const value = comp[field];
+        if (value !== null && typeof value === 'string') {
+          const instant = Date.parse(value);
+          if (Number.isFinite(instant) && instant % 3_600_000 !== 0) throw new TypeError(`Competition ${field} must be on a UTC hour`);
+        }
+      }
+    }
     // Ranking sorts entries by pnlUsd and the served JSON serializes every
     // entry measure, so a nonfinite measure corrupts both: the comparator
     // returns NaN (a NaN-pnl entry can take rank 1 over a real profit) and
