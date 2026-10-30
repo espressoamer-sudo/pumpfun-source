@@ -34,7 +34,8 @@ def sections(raw):
     for entry in elf_layout(raw)['sections']:
         # SHT_NOBITS occupies memory but no file bytes.
         payload = b'' if entry['type'] == 8 else raw[entry['offset']:entry['offset'] + entry['size']]
-        assert entry['name'] not in result, 'Duplicate section name requires index-based comparison'
+        if entry['name'] in result:
+            raise ValueError('Duplicate section name requires index-based comparison')
         result[entry['name']] = dict(entry, sha256=sha(payload), payload=payload)
     return result
 
@@ -79,8 +80,10 @@ def audit(root, index_path):
             snapshot[name] = {'error': 'snapshot_candidate_missing', 'candidate_path': candidate_path}
             continue
         candidate = read(root, candidate_path, inputs)
-        assert sha(original) == entry['original_sha256'], name
-        assert sha(candidate) == entry['candidate_sha256'], name
+        if sha(original) != entry['original_sha256']:
+            raise ValueError(f'{name}: original SHA-256 mismatch')
+        if sha(candidate) != entry['candidate_sha256']:
+            raise ValueError(f'{name}: candidate SHA-256 mismatch')
         snapshot[name] = {'candidate_path': candidate_path, 'original_path': entry['original_path'],
                           **measure(original, candidate)}
     status_health = {}
@@ -122,10 +125,12 @@ def main():
     parser.add_argument('--index', required=True, help='Repository-relative current-analysis-index.json of an explicitly selected pass')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    assert not args.output.exists(), 'Preserve prior audits; choose a fresh output file'
+    if args.output.exists():
+        raise FileExistsError('Preserve prior audits; choose a fresh output file')
     result = audit(args.repo.resolve(), args.index)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2) + '\n')
+    with args.output.open('x', encoding='utf-8', newline='\n') as output:
+        output.write(json.dumps(result, indent=2) + '\n')
     print(json.dumps({'snapshot_programs': len(result['snapshot_programs']),
                       'exact_allocations': [name for name, row in result['snapshot_programs'].items()
                                             if row.get('allocation_comparison', {}).get('full_byte_equality')],
