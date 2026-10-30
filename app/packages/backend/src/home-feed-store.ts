@@ -340,7 +340,7 @@ export function validateHomeFeedSeed(value: unknown): HomeFeedSeed {
     throw new HomeFeedSeedError("records must be a bounded array");
   }
   const observationMilliseconds = Date.parse(observedAt);
-  const records = value.records.map((record, index) =>
+  const records = Array.from(value.records, (record, index) =>
     validateRecord(record, index, observationMilliseconds),
   );
   for (const [label, identities] of [
