@@ -23,7 +23,9 @@ def manifest(source):
     if not source.is_dir() or source.is_symlink():
         raise ValueError('source must be a real directory')
     result = {}
-    for directory, dirs, files in os.walk(source):
+    def traversal_error(error):
+        raise error
+    for directory, dirs, files in os.walk(source, onerror=traversal_error):
         dirs[:] = sorted(d for d in dirs if d not in IGNORED)
         for name in dirs + sorted(files):
             path = Path(directory) / name
