@@ -43,6 +43,7 @@ def _plain(path, root):
 
 def strict_manifest(crate, workspace, repository, extra_inputs=(), cwd=None):
     """Return the archived manifest after rejecting symlinked or outside inputs."""
+    extra_inputs = tuple(extra_inputs)
     root = Path(repository).resolve()
     for extra in extra_inputs:
         extra_path = Path(extra)
