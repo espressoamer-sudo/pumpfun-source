@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import shutil
 import signal
+import stat
 import subprocess
 import tempfile
 import uuid
@@ -18,16 +19,23 @@ IGNORED = {'.git', 'target', '__pycache__'}
 def digest(data): return hashlib.sha256(data).hexdigest()
 
 
+def linked_source(path):
+    metadata = path.lstat()
+    return (stat.S_ISLNK(metadata.st_mode) or
+            bool(getattr(metadata, 'st_file_attributes', 0) &
+                 getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0)))
+
+
 def manifest(source):
     source = Path(source)
-    if not source.is_dir() or source.is_symlink():
+    if not source.is_dir() or linked_source(source):
         raise ValueError('source must be a real directory')
     result = {}
     for directory, dirs, files in os.walk(source):
         dirs[:] = sorted(d for d in dirs if d not in IGNORED)
         for name in dirs + sorted(files):
             path = Path(directory) / name
-            if path.is_symlink(): raise ValueError('source symlinks are unsupported')
+            if linked_source(path): raise ValueError('linked source inputs are unsupported')
             if path.is_file():
                 result[path.relative_to(source).as_posix()] = {'sha256': digest(path.read_bytes()),
                                                              'executable': bool(path.stat().st_mode & 0o111)}
